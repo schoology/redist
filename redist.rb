@@ -23,7 +23,6 @@ def migrate(key, src, dst)
       src.hkeys(key).each do |f|
         attr.push(f)
         fval = src.hget(key, f) 
-        log("type: #{type}, key: #{key}, field: #{f}, value: #{fval}")
         attr.push(fval)
       end
       dst.hmset(key, attr)
@@ -34,8 +33,7 @@ def migrate(key, src, dst)
     when 'zset'
       src.zrange(key, 0, -1).each do |z|
         score = src.zscore(key, z)
-        log("type: #{type}, key: #{key}, member: #{z}, score: #{score}")
-        dst.zadd(key, src.zscore(key, z), z)
+        dst.zadd(key, score, z)
       end
     end
   rescue
