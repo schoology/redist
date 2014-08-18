@@ -41,33 +41,44 @@ def migrate(key, src, dst)
   end
 end
 
+def expire(key, src, dst)
+  ttl = 259200
+  begin
+    dst.expire(key, ttl)
+  rescue
+    log("Error expiring key: #{key}, #{$1}")
+  end
+end
+
 src_host = '127.0.0.1'
 src_port = '6379'
 dst_host = '127.0.0.1'
-dst_port = '22121'
+#dst_port = '22121'
+dst_port = '6379'
 
 total_keys = 0
 increment = 10000
-log("starting migration")
-begin
-  (0..15).each do |db|
-    db_keys = 0
-    log("Starting Database: #{db}")
-    src = Redis.new(:host => src_host, :port => src_port, :db => db, :driver => :hiredis)
-    dst = Redis.new(:host => dst_host, :port => dst_port, :db => db, :driver => :hiredis)
-  
-    src.scan_each do |key|
-      migrate(key, src, dst)
-      db_keys += 1
-      total_keys += 1
+#op = expire
 
-      if db_keys % increment == 0
-        log("Processed #{db_keys} from Database #{db}")
-      end 
-    end
-    log("Done migrating Database: #{db}")
+log("starting processing")
+begin
+  db_keys = 0
+  db = 0
+  log("Starting Database: #{db}")
+  src = Redis.new(:host => src_host, :port => src_port, :db => db, :driver => :hiredis)
+  dst = Redis.new(:host => dst_host, :port => dst_port, :db => db, :driver => :hiredis)
+  
+  src.scan_each do |key|
+    expire(key, src, dst)
+    db_keys += 1
+    total_keys += 1
+
+    if db_keys % increment == 0
+      log("Processed #{db_keys} from Database #{db}")
+    end 
   end
-  rescue
-    log($!)
+  log("Done processing Database: #{db}")
+rescue
+  log($!)
 end
-log("migration complete")
+log("processing complete")
