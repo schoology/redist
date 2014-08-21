@@ -50,11 +50,19 @@ def expire(key, src, dst)
   end
 end
 
+def persist(key, src, dst)
+  begin
+    dst.persist(key)
+  rescue
+    log("Error persisting key: #{key}, #{$1}")
+  end
+end
+
 src_host = '127.0.0.1'
 src_port = '6379'
 dst_host = '127.0.0.1'
-#dst_port = '22121'
-dst_port = '6379'
+dst_port = '22121'
+#dst_port = '6379'
 
 total_keys = 0
 increment = 10000
@@ -69,7 +77,7 @@ begin
   dst = Redis.new(:host => dst_host, :port => dst_port, :db => db, :driver => :hiredis)
   
   src.scan_each do |key|
-    expire(key, src, dst)
+    persist(key, src, dst)
     db_keys += 1
     total_keys += 1
 
