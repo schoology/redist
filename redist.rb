@@ -169,7 +169,7 @@ def redist(opts)
   begin
     db_keys = 0
     db = 0
-    log("Starting Database: #{db}")
+    log("Starting Database: #{db}", opts)
     src = Redis.new(:host => src_host, :port => src_port, :db => db, :driver => :hiredis)
     dst = Redis.new(:host => dst_host, :port => dst_port, :db => db, :driver => :hiredis)
   
