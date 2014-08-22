@@ -168,13 +168,12 @@ def redist(opts)
   log("starting processing", opts)
   begin
     db_keys = 0
-    db = 0
     log("Starting Database: #{db}", opts)
-    src = Redis.new(:host => src_host, :port => src_port, :db => db, :driver => :hiredis)
-    dst = Redis.new(:host => dst_host, :port => dst_port, :db => db, :driver => :hiredis)
+    src = Redis.new(:host => src_host, :port => src_port, :driver => :hiredis)
+    dst = Redis.new(:host => dst_host, :port => dst_port, :driver => :hiredis)
   
     src.scan_each do |key|
-      case options[:op]
+      case opts[:op]
         when 'migrate'
           migrate(key, src, dst, opts)
         when 'persist'
@@ -183,6 +182,8 @@ def redist(opts)
           expire(key, src, dst, opts)
         when 'del'
           del(key, src, dst, opts)
+        else
+          puts "Unknown operation. See 'redist.rb -h'"
       end
       db_keys += 1
       total_keys += 1
