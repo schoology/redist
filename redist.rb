@@ -43,31 +43,44 @@ OptionParser.new do |opts|
     options[:progress] = progress
   end
 
+  opts.on("--del-prefix [PREFIX]", String, "Used with '--op del' to determine which keys to remove") do |prefix|
+    options[:prefix] = prefix
+  end
+
 end.parse!
 
-def validate_options(options)
-  if !options.has_key?(:op)
-    log("You must specify an operation (e.g. --op migrate)")
+# Validates options to make sure mix of options provided is valid.
+def validate_options(opts)
+  operations = ['migrate', 'persist', 'expire', 'del']
+  if !opts.has_key?(:op)
+    puts "You must specify an operation (e.g. --op migrate)"
     return false
-  elsif options[:op] == "expire" && !options.has_key?("ttl")
-    log("You must specify a TTL when using '--op expire'")
+  elsif !operations.include?(opts[:op])
+    puts "Invalid operation: #{opts[:op]}"
+  elsif opts[:op] == 'expire' && !opts.has_key?(:ttl)
+    puts "You must specify '--expire-ttl TTL' when using '--op expire'"
+    return false
+  elsif opts[:op] == 'del' && !opts.has_key?(:prefix)
+    puts "You must specify '--del-prefix PREFIX' when using '--op del'"
     return false
   end
   return true
 end
 
-def log(message)
+# Logs a message to stdout and a file if --log was supplied.
+def log(message, opts)
   ts = DateTime.now
   msg = "#{ts} - #{message}" 
-  if options.has_key?(:log)
-    f = open(options[:log], 'a')
+  if opts.has_key?(:log)
+    f = open(opts[:log], 'a')
     f.puts msg
     f.close()
   end
   puts msg
 end
 
-def migrate(key, src, dst)
+# Migrates a key from src redis to dst redis.
+def migrate(key, src, dst, opts)
   type = src.type(key)
   begin
     case type
@@ -92,38 +105,40 @@ def migrate(key, src, dst)
       end
     end
   rescue
-    log("type: #{type}, key: #{key}, Error: #{$!}")
+    log("type: #{type}, key: #{key}, Error: #{$!}", opts)
   end
 end
 
-def expire(key, src, dst)
-  ttl = 259200
+# Expires a key if it does not already have a ttl.
+def expire(key, src, dst, opts)
+  ttl = opts[:ttl]
   begin
     dst.expire(key, ttl)
   rescue
-    log("Error expiring key: #{key}, #{$1}")
+    log("Error expiring key: #{key}, #{$1}", opts)
   end
 end
 
-def persist(key, src, dst)
+# Marks a key as persistent if it did not have a ttl in the src redis.
+def persist(key, src, dst, opts)
   begin
     dst.persist(key)
   rescue
-    log("Error persisting key: #{key}, #{$1}")
+    log("Error persisting key: #{key}, #{$1}", opts)
   end
 end
 
+# Main program driver
 def redist(opts)
-  src_host = '127.0.0.1'
-  src_port = '6379'
-  dst_host = '127.0.0.1'
-  dst_port = '22121'
-  #dst_port = '6379'
+  src_host = opts[:src_host]
+  src_port = opts[:src_port]
+  dst_host = opts[:dst_host]
+  dst_port = opts[:dst_port]
 
   total_keys = 0
-  increment = 10000
+  increment = opts[:progress]
   #op = expire 
-  log("starting processing")
+  log("starting processing", opts)
   begin
     db_keys = 0
     db = 0
@@ -132,22 +147,31 @@ def redist(opts)
     dst = Redis.new(:host => dst_host, :port => dst_port, :db => db, :driver => :hiredis)
   
     src.scan_each do |key|
-      persist(key, src, dst)
+      case options[:op]
+        when 'migrate'
+          migrate(key, src, dst, opts)
+        when 'persist'
+          persist(key, src, dst, opts)
+        when 'expire'
+          expire(key, src, dst, opts)
+        when 'del'
+          log("TODO - del")
+      end
       db_keys += 1
       total_keys += 1
 
-      if db_keys % increment == 0
-        log("Processed #{db_keys} from Database #{db}")
+      if !increment.nil? && (db_keys % increment == 0)
+        log("Processed #{db_keys} from Database #{db}", opts)
       end 
     end
-    log("Done processing Database: #{db}")
+    log("Done processing Database: #{db}", opts)
   rescue
     log($!)
   end
-  log("processing complete")
+  log("processing complete", opts)
 end
 
-if !validate_options()
+if !validate_options(options)
   puts "ERROR: Invalid options specified. Try 'redist -h'"
 else
   #redist(options)
