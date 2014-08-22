@@ -203,5 +203,6 @@ end
 if !validate_options(options)
   puts "ERROR: Invalid options specified. Try 'redist -h'"
 else
+  p options
   redist(options)
 end
