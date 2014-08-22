@@ -1,4 +1,4 @@
-#!/bin/env ruby
+#!/usr/bin/env ruby
 
 require 'rubygems'
 require 'hiredis'
@@ -9,7 +9,7 @@ require 'optparse'
 options = {}
 OptionParser.new do |opts|
 
-  opts.banner = "Usage: redist <migrate|expire|persist|del> [options]"
+  opts.banner = "Usage: redist.rb [options]"
 
   opts.on("--src-host HOST", "Source Redis host") do |src|
     options[:src_host] = src
