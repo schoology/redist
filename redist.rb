@@ -193,7 +193,7 @@ def redist(opts)
     end
     log("Done processing Database: #{db}", opts)
   rescue
-    log($!)
+    log($!, opts)
   end
   log("processing complete", opts)
 end
