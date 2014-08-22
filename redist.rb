@@ -168,9 +168,10 @@ def redist(opts)
   log("starting processing", opts)
   begin
     db_keys = 0
+    db = 0
     log("Starting Database: #{db}", opts)
-    src = Redis.new(:host => src_host, :port => src_port, :driver => :hiredis)
-    dst = Redis.new(:host => dst_host, :port => dst_port, :driver => :hiredis)
+    src = Redis.new(:host => src_host, :port => src_port, :db => db, :driver => :hiredis)
+    dst = Redis.new(:host => dst_host, :port => dst_port, :db => db, :driver => :hiredis)
   
     src.scan_each do |key|
       case opts[:op]
