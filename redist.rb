@@ -43,7 +43,7 @@ OptionParser.new do |opts|
     options[:progress] = progress
   end
 
-  opts.on("--del-prefix [PREFIX]", String, "Used with '--op del' to determine which keys to remove") do |prefix|
+  opts.on("--except-prefix [x,y,z]", Array, "Used with '--op del' to determine which keys to keep") do |prefix|
     options[:prefix] = prefix
   end
 
@@ -61,7 +61,7 @@ def validate_options(opts)
     puts "You must specify '--expire-ttl TTL' when using '--op expire'"
     return false
   elsif opts[:op] == 'del' && !opts.has_key?(:prefix)
-    puts "You must specify '--del-prefix PREFIX' when using '--op del'"
+    puts "You must specify '--except-prefix PREFIX' when using '--op del'"
     return false
   end
   return true
@@ -111,9 +111,12 @@ end
 
 # Expires a key if it does not already have a ttl.
 def expire(key, src, dst, opts)
-  ttl = opts[:ttl]
+  exp_ttl = opts[:ttl]
   begin
-    dst.expire(key, ttl)
+    ttl = src.ttl(key)
+    if ttl == -1
+      dst.expire(key, exp_ttl)
+    end
   rescue
     log("Error expiring key: #{key}, #{$1}", opts)
   end
@@ -122,9 +125,33 @@ end
 # Marks a key as persistent if it did not have a ttl in the src redis.
 def persist(key, src, dst, opts)
   begin
-    dst.persist(key)
+    ttl = src.ttl(key)
+
+    # only persist keys in dst if it did not have a ttl in src
+    if ttl == -1 
+      dst.persist(key)
+    end
   rescue
     log("Error persisting key: #{key}, #{$1}", opts)
+  end
+end
+
+# Deletes a key if it does not have a matching prefix
+def del(key, src, dst, opts)
+  prefix = opts[:prefix]
+  begin
+    keep = false
+    prefix.each do |pre|
+      keep = keep | key.starts_with?(pre)
+    end
+
+    if !keep
+      dst.del(key)
+    else
+      log("Keeping key: #{key}", opts)
+    end
+  rescue
+    log("Error deleting key: #{key}, #{$1}", opts)
   end
 end
 
@@ -155,7 +182,7 @@ def redist(opts)
         when 'expire'
           expire(key, src, dst, opts)
         when 'del'
-          log("TODO - del")
+          del(key, src, dst, opts)
       end
       db_keys += 1
       total_keys += 1
@@ -174,5 +201,5 @@ end
 if !validate_options(options)
   puts "ERROR: Invalid options specified. Try 'redist -h'"
 else
-  #redist(options)
+  redist(options)
 end
