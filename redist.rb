@@ -219,7 +219,6 @@ def redist(opts)
         ts = Time.now
       end 
     end
-    log("Done processing Database: #{db}", opts)
   rescue
     log($!, opts)
   end
