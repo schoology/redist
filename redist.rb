@@ -83,8 +83,9 @@ def log(message, opts)
     f = open(opts[:log], 'a')
     f.puts msg
     f.close()
+  else
+    puts msg
   end
-  puts msg
 end
 
 # Migrates a key from src redis to dst redis.
