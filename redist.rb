@@ -202,7 +202,7 @@ def redist(opts)
         when 'del'
           del(key, src, dst, opts)
         when 'move'
-          move(key, dst_db, opts)
+          move(key, src, dst_db, opts)
         else
           puts "Unknown operation. See 'redist.rb -h'"
       end
