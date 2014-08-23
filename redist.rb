@@ -18,6 +18,10 @@ OptionParser.new do |opts|
   opts.on("--src-port PORT", String, "Source Redis port") do |src|
     options[:src_port] = src
   end
+  
+  opts.on("--src-db DB", String, "Source Redis db") do |src|
+    options[:src_db] = src
+  end
 
   opts.on("--dst-host HOST", String, "Destination Redis host") do |src|
     options[:dst_host] = src
@@ -25,6 +29,10 @@ OptionParser.new do |opts|
 
   opts.on("--dst-port PORT", String, "Destination Redis port") do |src|
     options[:dst_port] = src
+  end
+
+  opts.on("--dst-db DB", String, "Destination Redis db") do |src|
+    options[:dst_db] = src
   end
 
   opts.on("--op OPERATION", String, "Operation to run") do |op|
@@ -51,7 +59,7 @@ end.parse!
 
 # Validates options to make sure mix of options provided is valid.
 def validate_options(opts)
-  operations = ['migrate', 'persist', 'expire', 'del']
+  operations = ['migrate', 'persist', 'expire', 'del', 'move']
   if !opts.has_key?(:op)
     puts "You must specify an operation (e.g. --op migrate)"
     return false
@@ -155,24 +163,35 @@ def del(key, src, dst, opts)
   end
 end
 
+# Moves a key between databases
+def move(key, src, to_db, opts)
+  begin
+    src.move(key, to_db)
+  rescue
+    log("Error moving key: #{key} to: db#{to_db}, #{$1}", opts)
+  end
+end
+
 # Main program driver
 def redist(opts)
   src_host = opts[:src_host]
   src_port = opts[:src_port]
   dst_host = opts[:dst_host]
   dst_port = opts[:dst_port]
+  src_db = opts[:src_db]
+  dst_db = opts[:dst_db]
 
   total_keys = 0
   increment = opts[:progress]
   #op = expire 
   log("starting processing", opts)
   begin
-    db_keys = 0
-    db = 0
     log("Starting Database: #{db}", opts)
-    src = Redis.new(:host => src_host, :port => src_port, :db => db, :driver => :hiredis)
-    dst = Redis.new(:host => dst_host, :port => dst_port, :db => db, :driver => :hiredis)
-  
+    src = Redis.new(:host => src_host, :port => src_port, :db => src_db, :driver => :hiredis)
+    dst = Redis.new(:host => dst_host, :port => dst_port, :db => dst_db, :driver => :hiredis)
+ 
+    ts = Time.now
+    increment_keys = 0
     src.scan_each do |key|
       case opts[:op]
         when 'migrate'
@@ -183,14 +202,21 @@ def redist(opts)
           expire(key, src, dst, opts)
         when 'del'
           del(key, src, dst, opts)
+        when 'move'
+          move(key, dst_db, opts)
         else
           puts "Unknown operation. See 'redist.rb -h'"
       end
-      db_keys += 1
+      increment_keys += 1
       total_keys += 1
 
       if !increment.nil? && (db_keys % increment == 0)
-        log("Processed #{db_keys} from Database #{db}", opts)
+        te = Time.now
+        elapsed = te - ts
+        rate = increment_keys / elapsed 
+        log("Processed: #{total_keys} keys at rate of #{rate.to_i} kps", opts)
+        increment_keys = 0
+        ts = Time.now
       end 
     end
     log("Done processing Database: #{db}", opts)
