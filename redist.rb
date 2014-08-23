@@ -190,6 +190,7 @@ def redist(opts)
     dst = Redis.new(:host => dst_host, :port => dst_port, :db => dst_db, :driver => :hiredis)
  
     ts = Time.now
+    total_ts = ts
     increment_keys = 0
     src.scan_each do |key|
       case opts[:op]
@@ -218,10 +219,14 @@ def redist(opts)
         ts = Time.now
       end 
     end
+    total_te = Time.now
   rescue
     log($!, opts)
   end
-  log("Processing complete. Processed #{total_keys} keys.", opts)
+  total_seconds = total_te.to_i - total_ts.to_i
+  minutes = total_seconds / 60
+  seconds = total_seconds % 60
+  log("Processing complete. Processed #{total_keys} keys in #{minutes.to_i}:#{seconds.to_i}", opts)
 end
 
 if !validate_options(options)
