@@ -184,9 +184,8 @@ def redist(opts)
   total_keys = 0
   increment = opts[:progress]
   #op = expire 
-  log("starting processing", opts)
+  log("Starting processing", opts)
   begin
-    log("Starting Database: #{db}", opts)
     src = Redis.new(:host => src_host, :port => src_port, :db => src_db, :driver => :hiredis)
     dst = Redis.new(:host => dst_host, :port => dst_port, :db => dst_db, :driver => :hiredis)
  
@@ -222,7 +221,7 @@ def redist(opts)
   rescue
     log($!, opts)
   end
-  log("processing complete", opts)
+  log("Processing complete", opts)
 end
 
 if !validate_options(options)
