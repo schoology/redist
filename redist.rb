@@ -209,7 +209,7 @@ def redist(opts)
       increment_keys += 1
       total_keys += 1
 
-      if !increment.nil? && (db_keys % increment == 0)
+      if !increment.nil? && (increment_keys % increment == 0)
         te = Time.now
         elapsed = te - ts
         rate = increment_keys / elapsed 
@@ -221,7 +221,7 @@ def redist(opts)
   rescue
     log($!, opts)
   end
-  log("Processing complete", opts)
+  log("Processing complete. Processed #{total_keys} keys.", opts)
 end
 
 if !validate_options(options)
